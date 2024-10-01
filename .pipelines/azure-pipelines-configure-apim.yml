@@ -1,0 +1,227 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  group: SP_Credentials
+  major_version: '0'
+  minor_version: '7'
+  patch_version: '5'
+  buildConfiguration: 'Release'
+  resourceGroupName: 'rg-apim2'
+  location: 'westeurope'
+  templateFile: 'main.bicep'
+  paramsFile: 'main.bicepparam'
+  service_name: 'apim-tvtestinst1010'
+  api_name: 'myWebAPI'
+  api_version: ''
+  open_api_specification: ''
+
+name: $(major_version).$(minor_version).$(patch_version).$(Rev:r)
+
+stages:
+- stage: Web_App_Build
+  displayName: Build Web App
+  dependsOn: []
+  variables:
+    ARM_CLIENT_ID: $(ARM-CLIENT-ID)
+    ARM_SUBSCRIPTION_ID: $(ARM-SUBSCRIPTION-ID)
+    ARM_TENANT_ID: $(ARM-TENANT-ID)
+    ARM_CLIENT_SECRET: $(ARM-CLIENT-SECRET)
+  jobs:
+  - job: build_web_app
+    displayName: build web app
+    steps:
+    - task: UseDotNet@2
+      displayName: 'Install .NET Core SDK'
+      inputs:
+        version: 8.x
+        performMultiLevelLookup: true
+        includePreviewVersions: true # Required for preview versions
+
+    - task: DotNetCoreCLI@2
+      displayName: Restore Nuget Packages
+      inputs:
+        command: 'restore'
+        projects: '$(Build.SourcesDirectory)/src/BlueBall/BlueBall.sln'
+        feedsToUse: 'select'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        arguments: '--configuration $(buildConfiguration) -p:Version=$(build.buildnumber)'
+        workingDirectory: '$(build.sourcesdirectory)/src/BlueBall/'
+      displayName: 'Dotnet Build $(buildConfiguration)'
+
+    - task: CopyFiles@2
+      displayName: Copy OpenAPI v1 for publishing
+      inputs:
+        SourceFolder: '$(build.sourcesdirectory)/src/BlueBall/BlueBall/wwwroot/swagger/v1/'
+        Contents: '**'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/openapi_v1'
+
+    - task: CopyFiles@2
+      displayName: Copy OpenAPI v3 for publishing
+      inputs:
+        SourceFolder: '$(build.sourcesdirectory)/src/BlueBall/BlueBall/wwwroot/swagger/v3/'
+        Contents: '**'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/openapi_v3'
+    - task: DotNetCoreCLI@2
+      displayName: Publish Web App
+      inputs:
+        command: publish
+        publishWebProjects: True
+        arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory) -p:Version=$(build.buildnumber)'
+        zipAfterPublish: True
+        workingDirectory: '$(build.sourcesdirectory)/src/BlueBall/'
+
+    # this code takes all the files in $(Build.ArtifactStagingDirectory) and uploads them as an artifact of your build.
+    - task: PublishPipelineArtifact@1
+      displayName: Upload Pipeline Artifacts
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)' 
+        artifactName: 'myWebsite'
+
+    - task: PublishPipelineArtifact@1
+      displayName: Upload Artifacts OpenAPI v1
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/openapi_v1'
+        artifact: 'openapi_v1'
+        publishLocation: 'pipeline'
+
+    - task: PublishPipelineArtifact@1
+      displayName: Upload Artifacts OpenAPI v3
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/openapi_v3'
+        artifact: 'openapi_v3'
+        publishLocation: 'pipeline'
+- stage: Web_App_Deploy
+  displayName: Deploy Web App
+  condition: false
+  dependsOn: [Web_App_Build]
+  variables:
+    ARM_CLIENT_ID: $(ARM-CLIENT-ID)
+    ARM_SUBSCRIPTION_ID: $(ARM-SUBSCRIPTION-ID)
+    ARM_TENANT_ID: $(ARM-TENANT-ID)
+    ARM_CLIENT_SECRET: $(ARM-CLIENT-SECRET)
+  jobs:
+  - job: deploy_web_app
+    displayName: deploy web app
+    steps:
+    - task: DownloadPipelineArtifact@2
+      displayName: Download Pipeline Artifacts
+      inputs:
+        buildType: 'current'
+        artifactName: 'myWebsite'
+        targetPath: '$(Pipeline.Workspace)'
+
+    - task: AzureRmWebAppDeployment@4
+      displayName: Deploy Web App
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: 'apim_deployment_connection'
+        appType: 'webAppLinux'
+        WebAppName: 'tv22-app-mysample'
+        packageForLinux: '$(Pipeline.Workspace)/**/*.zip'
+
+- stage: Web_App_API_Configuration
+  displayName: Configure WebApp API
+  dependsOn: [Web_App_Build]
+  variables:
+    ARM_CLIENT_ID: $(ARM-CLIENT-ID)
+    ARM_SUBSCRIPTION_ID: $(ARM-SUBSCRIPTION-ID)
+    ARM_TENANT_ID: $(ARM-TENANT-ID)
+    ARM_CLIENT_SECRET: $(ARM-CLIENT-SECRET)
+  jobs:
+  - deployment: configure_api
+    displayName: configure api for web app
+    environment: infra
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+  
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              buildType: 'current'
+              artifactName: 'openapi_v3'
+              targetPath: '$(Pipeline.Workspace)/openapi_v3'
+
+          - task: PowerShell@2
+            displayName: Storing OpenAPI specification in pipeline variable
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host "Reading OpenAPI specification..."
+                $spec = Get-Content -Path "$(Pipeline.Workspace)/openapi_v3/swagger.json"
+                Write-Host "##vso[task.setvariable variable=open_api_specification;]$spec"
+                Write-Host "Done."
+              failOnStderr: true
+              showWarnings: true
+              pwsh: true
+              workingDirectory: '$(Pipeline.Workspace)/openapi_v3'
+
+          - task: PowerShell@2
+            displayName: Storing OpenAPI specification in pipeline variable
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host "Write current version information into pipeline variable..."
+                $spec = Get-Content -Path "$(Pipeline.Workspace)/openapi_v3/swagger.json"
+                $version = "$(major_version).$(minor_version)"
+                Write-Host "##vso[task.setvariable variable=api_version;]$version"
+                Write-Host "Done."
+              failOnStderr: true
+              showWarnings: true
+              pwsh: true
+              workingDirectory: '$(Pipeline.Workspace)/openapi_v3'
+
+          - task: qetza.replacetokens.replacetokens-task.replacetokens@5
+            displayName: Substitute Bicep parameters with current values
+            inputs:
+              rootDirectory: '$(build.sourcesdirectory)/src/BlueBall-Iac/'
+              targetFiles: 'main.bicepparam'
+              encoding: 'auto'
+              tokenPattern: 'rm'
+              writeBOM: true
+              actionOnMissing: 'warn'
+              keepToken: false
+              actionOnNoFiles: 'fail'
+              enableTransforms: false
+              enableRecursion: false
+              useLegacyPattern: false
+              enableTelemetry: true
+
+          - task: colinsalmcorner.colinsalmcorner-buildtasks.replace-tokens-task.ReplaceTokens@1
+            enabled: false
+            inputs:
+              sourcePath: '$(build.sourcesdirectory)/src/BlueBall-Iac/'
+              filePattern: 'main.bicepparam'
+              tokenRegex: '__(\w+)__'
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(build.sourcesdirectory)/src/BlueBall-Iac/main.bicepparam'
+              artifact: 'openapi_v3_substituted'
+              publishLocation: 'pipeline'
+
+          # Configure API Definition based on OpenAPI specification via Bicep
+          - task: AzureCLI@2
+            displayName: Deploy infrastructure
+            inputs:
+              azureSubscription: 'sc-ME-MngEnv432899'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az --version
+                # az group create --name $(resourceGroupName) --location $(location)
+                az deployment group create --resource-group $(resourceGroupName) --template-file $(templateFile) --parameters $(paramsFile) --mode Incremental
+              workingDirectory: '$(build.sourcesdirectory)/src/BlueBall-Iac'

@@ -14,16 +14,21 @@ resource apimService 'Microsoft.ApiManagement/service@2022-04-01-preview' existi
 @description('The API version')
 param apiVersion string = ''
 
+@description('The (optional) service URL')
+param serviceUrl string = ''
+
+@description('The API description')
+param apiDescription string = ''
+
 module petstoreApi './modules/api-management-openapi.bicep' = {
   name: 'petstoreApi'
   params: {
     serviceName: serviceName
     apiName: apiName
-    apiDescription: 'See petstore3.swagger.io'
-    serviceUrl: 'https://petstore3.swagger.io/api/v3'
+    apiDescription: apiDescription
+    serviceUrl: serviceUrl
     openApiSpecification: openApiSpecification
     apiVersion: apiVersion
-    // policyDocument: loadTextContent('./petstore/petstore-api.xml')
   }
   dependsOn: [
     apimService

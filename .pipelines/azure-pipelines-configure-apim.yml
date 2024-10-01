@@ -23,6 +23,8 @@ variables:
   api_name: 'myWebAPI'
   api_version: ''
   open_api_specification: ''
+  service_url: 'https://petstore3.swagger.io/api/v3'
+  api_description: 'See petstore3.swagger.io'
 
 name: $(major_version).$(minor_version).$(patch_version).$(Rev:r)
 

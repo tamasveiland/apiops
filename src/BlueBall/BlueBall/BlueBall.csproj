@@ -7,7 +7,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.8.1" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -18,11 +18,9 @@
 	<Target Name="OpenAPI" AfterTargets="Build">  <!--Condition="$(Configuration)=='Debug'">-->
 		<!--<Exec Command="dotnet tool restore"></Exec>-->
 		<Exec Command="dotnet new tool-manifest --force"></Exec>
-		<Exec Command="dotnet tool install Swashbuckle.AspNetCore.Cli --version 6.5.0"></Exec>
-		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/v1/swagger.yaml --yaml $(OutputPath)$(AssemblyName).dll v1" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
-		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/v1/swagger.json $(OutputPath)$(AssemblyName).dll v1" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
-		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/v3/swagger.yaml --yaml $(OutputPath)$(AssemblyName).dll v3" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
-		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/v3/swagger.json $(OutputPath)$(AssemblyName).dll v3" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
+		<Exec Command="dotnet tool install Swashbuckle.AspNetCore.Cli --version 6.8.1"></Exec>
+		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/swagger.yaml --yaml $(OutputPath)$(AssemblyName).dll v1" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
+		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/swagger.json $(OutputPath)$(AssemblyName).dll v1" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
 	</Target>
 
 </Project>

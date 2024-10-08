@@ -1,9 +1,9 @@
 openapi: 3.0.1
 info:
   title: BlueBall API
-  version: '1.0'
+  version: '2.0'
 paths:
-  /api/v1/Basket:
+  /api/v2/Basket:
     get:
       tags:
         - Basket
@@ -43,7 +43,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/api/v1/Basket/{id}':
+  '/api/v2/Basket/{id}':
     get:
       tags:
         - Basket

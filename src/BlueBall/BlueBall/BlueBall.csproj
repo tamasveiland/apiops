@@ -7,11 +7,13 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
+		<PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.8.1" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Folder Include="wwwroot\swagger\v3\" />
+		<Folder Include="wwwroot\swagger\v2\" />
 		<Folder Include="wwwroot\swagger\v1\" />
 	</ItemGroup>
 
@@ -19,8 +21,10 @@
 		<!--<Exec Command="dotnet tool restore"></Exec>-->
 		<Exec Command="dotnet new tool-manifest --force"></Exec>
 		<Exec Command="dotnet tool install Swashbuckle.AspNetCore.Cli --version 6.8.1"></Exec>
-		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/swagger.yaml --yaml $(OutputPath)$(AssemblyName).dll v1" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
-		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/swagger.json $(OutputPath)$(AssemblyName).dll v1" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
+		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/v1/swagger.yaml --yaml $(OutputPath)$(AssemblyName).dll v1" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
+		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/v1/swagger.json $(OutputPath)$(AssemblyName).dll v1" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
+		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/v2/swagger.yaml --yaml $(OutputPath)$(AssemblyName).dll v2" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
+		<Exec Command="dotnet swagger tofile --output ./wwwroot/swagger/v2/swagger.json $(OutputPath)$(AssemblyName).dll v2" EnvironmentVariables="DOTNET_ROLL_FORWARD=LatestMajor" WorkingDirectory="$(ProjectDir)" />
 	</Target>
 
 </Project>
